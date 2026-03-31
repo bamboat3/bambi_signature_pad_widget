@@ -10,6 +10,9 @@ import 'package:uuid/uuid.dart';
 import 'models/signature_box_model.dart';
 import 'services/pdf_download_service.dart';
 import 'services/pdf_embed_service.dart';
+import 'services/pdf_upload_service.dart';
+import 'wacom/default_wacom_adapter.dart';
+import 'wacom/wacom_adapter.dart';
 import 'widgets/signature_box_overlay.dart';
 import 'widgets/signature_pad_dialog.dart';
 
@@ -46,10 +49,16 @@ class PdfSignWidget extends StatefulWidget {
   /// The HTTP(S) URL of the PDF document to load and display.
   final String pdfUrl;
 
-  /// The file name (with or without `.pdf`) used when saving the signed document.
+  /// Your API endpoint that receives the signed PDF via HTTP POST.
   ///
-  /// The file is written to the app documents directory. A `.pdf` extension is
-  /// appended automatically if not already present.
+  /// The request is `multipart/form-data` with two fields:
+  /// - `filename` — the value of [outputFilename] (`.pdf` appended if missing)
+  /// - `file`     — the signed PDF as a binary stream
+  final String uploadUrl;
+
+  /// The file name sent to the server as the `filename` POST field.
+  ///
+  /// A `.pdf` extension is appended automatically if not already present.
   final String outputFilename;
 
   /// URL of the brand logo shown in the signature pad dialog header.
@@ -62,17 +71,22 @@ class PdfSignWidget extends StatefulWidget {
   /// Falls back to `'Draw your signature'` when null or empty.
   final String? signatureTitle;
 
-  /// Called with `true` when the signed PDF is saved successfully,
-  /// or `false` if an error occurs during saving.
+  /// Called with `true` when the server responds with HTTP 2xx,
+  /// or `false` on a non-2xx response or network error.
   final void Function(bool success)? onSaveComplete;
 
   /// Creates a [PdfSignWidget].
   ///
-  /// [pdfUrl] and [outputFilename] are required.
+  /// [pdfUrl], [uploadUrl], and [outputFilename] are required.
   /// [brandLogoUrl], [signatureTitle], and [onSaveComplete] are optional.
+  ///
+  /// Wacom STU tablet support is built-in and managed automatically via
+  /// [DefaultWacomAdapter.instance]. The connection indicator in the right
+  /// panel lets the user connect/disconnect the device at any time.
   const PdfSignWidget({
     super.key,
     required this.pdfUrl,
+    required this.uploadUrl,
     required this.outputFilename,
     this.brandLogoUrl,
     this.signatureTitle,
@@ -88,6 +102,9 @@ class PdfSignWidget extends StatefulWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _PdfSignWidgetState extends State<PdfSignWidget> {
+  // Wacom — always the singleton; never creates a second instance
+  final WacomAdapter _wacom = DefaultWacomAdapter.instance;
+
   // PDF viewer
   final PdfViewerController _controller = PdfViewerController();
 
@@ -315,6 +332,7 @@ class _PdfSignWidgetState extends State<PdfSignWidget> {
       context,
       brandLogoUrl: widget.brandLogoUrl,
       signatureTitle: widget.signatureTitle,
+      wacomAdapter: _wacom,
     );
     if (!mounted) return;
     if (result != null) {
@@ -402,12 +420,15 @@ class _PdfSignWidgetState extends State<PdfSignWidget> {
             .toList(),
       );
 
-      final savedFile =
-          await savePdfToDocuments(pdfBytes, widget.outputFilename);
+      final success = await uploadSignedPdf(
+        pdfBytes: pdfBytes,
+        uploadUrl: widget.uploadUrl,
+        filename: widget.outputFilename,
+      );
 
       if (!mounted) return;
-      _showSnack('Saved to: ${savedFile.path}');
-      widget.onSaveComplete?.call(true);
+      _showSnack(success ? 'Document uploaded successfully.' : 'Upload failed — server returned an error.');
+      widget.onSaveComplete?.call(success);
     } catch (e) {
       if (!mounted) return;
       _showSnack('Error saving: $e');
@@ -611,7 +632,8 @@ class _PdfSignWidgetState extends State<PdfSignWidget> {
     final signedCount = _boxes.where((b) => b.isSigned).length;
     final totalCount = _boxes.length;
 
-    return Container(
+    // Rebuild panel whenever Wacom connection state changes
+    final panel = Container(
       color: _surface,
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -632,7 +654,12 @@ class _PdfSignWidgetState extends State<PdfSignWidget> {
             style: TextStyle(fontSize: 12, color: _textSecondary),
           ),
 
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
+
+          // ── Wacom connection indicator ───────────────────────────────
+          _WacomIndicator(adapter: _wacom),
+
+          const SizedBox(height: 8),
 
           // ── Add Signature Box button ─────────────────────────────────
           _PanelButton(
@@ -729,12 +756,116 @@ class _PdfSignWidgetState extends State<PdfSignWidget> {
         ],
       ),
     );
+
+    // Rebuild panel whenever Wacom connection state changes
+    return ListenableBuilder(
+      listenable: _wacom,
+      builder: (_, __) => panel,
+    );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Small helper widgets
 // ─────────────────────────────────────────────────────────────────────────────
+
+/// Wacom connection status + connect/disconnect button shown in the panel.
+class _WacomIndicator extends StatefulWidget {
+  final WacomAdapter adapter;
+  const _WacomIndicator({required this.adapter});
+
+  @override
+  State<_WacomIndicator> createState() => _WacomIndicatorState();
+}
+
+class _WacomIndicatorState extends State<_WacomIndicator> {
+  bool _busy = false;
+
+  Future<void> _toggle() async {
+    setState(() => _busy = true);
+    try {
+      if (widget.adapter.isConnected) {
+        await widget.adapter.disconnect();
+      } else {
+        await widget.adapter.connect();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Wacom: $e'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool connected = widget.adapter.isConnected;
+
+    return GestureDetector(
+      onTap: _busy ? null : _toggle,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: connected
+              ? const Color(0xFFDCFCE7)
+              : const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: connected
+                ? const Color(0xFF86EFAC)
+                : const Color(0xFFE2E8F0),
+          ),
+        ),
+        child: Row(
+          children: [
+            _busy
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Icon(
+                    connected ? Icons.usb_rounded : Icons.usb_off_rounded,
+                    size: 18,
+                    color: connected
+                        ? const Color(0xFF16A34A)
+                        : const Color(0xFF94A3B8),
+                  ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                connected ? 'Wacom Connected' : 'Wacom Disconnected',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: connected
+                      ? const Color(0xFF16A34A)
+                      : const Color(0xFF64748B),
+                ),
+              ),
+            ),
+            Text(
+              connected ? 'Disconnect' : 'Connect',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: connected
+                    ? const Color(0xFF16A34A)
+                    : const Color(0xFF4F46E5),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class _PanelButton extends StatelessWidget {
   final String label;

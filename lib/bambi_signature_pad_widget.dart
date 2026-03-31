@@ -21,3 +21,4 @@
 library;
 
 export 'src/pdf_sign_widget.dart';
+export 'src/wacom/wacom_adapter.dart';

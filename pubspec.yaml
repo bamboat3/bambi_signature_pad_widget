@@ -2,7 +2,7 @@ name: bambi_signature_pad_widget
 description: >-
   PDF viewer and signature pad for Flutter. Load a PDF from URL,
   place signature boxes, draw and embed signatures, save the signed PDF.
-version: 0.2.0
+version: 0.3.0
 
 repository: https://github.com/YOUR_USERNAME/bambi_signature_pad_widget
 homepage: https://github.com/YOUR_USERNAME/bambi_signature_pad_widget
