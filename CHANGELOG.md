@@ -1,3 +1,10 @@
+## 0.2.0
+
+* Added `brandLogoUrl` parameter — display a custom logo in the signature pad header
+* Added `signatureTitle` parameter — display a custom title in the signature pad header
+* Improved public API dartdoc coverage
+* Added example app
+
 ## 0.1.0
 
 * Initial release

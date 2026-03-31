@@ -43,19 +43,33 @@ import 'widgets/signature_pad_dialog.dart';
 /// )
 /// ```
 class PdfSignWidget extends StatefulWidget {
+  /// The HTTP(S) URL of the PDF document to load and display.
   final String pdfUrl;
+
+  /// The file name (with or without `.pdf`) used when saving the signed document.
+  ///
+  /// The file is written to the app documents directory. A `.pdf` extension is
+  /// appended automatically if not already present.
   final String outputFilename;
 
   /// URL of the brand logo shown in the signature pad dialog header.
+  ///
   /// Pass an empty string or omit to show the default pen icon.
   final String? brandLogoUrl;
 
   /// Title text shown in the signature pad dialog header.
-  /// Falls back to 'Draw your signature' when null or empty.
+  ///
+  /// Falls back to `'Draw your signature'` when null or empty.
   final String? signatureTitle;
 
+  /// Called with `true` when the signed PDF is saved successfully,
+  /// or `false` if an error occurs during saving.
   final void Function(bool success)? onSaveComplete;
 
+  /// Creates a [PdfSignWidget].
+  ///
+  /// [pdfUrl] and [outputFilename] are required.
+  /// [brandLogoUrl], [signatureTitle], and [onSaveComplete] are optional.
   const PdfSignWidget({
     super.key,
     required this.pdfUrl,
