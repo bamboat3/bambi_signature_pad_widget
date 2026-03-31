@@ -39,29 +39,7 @@ Designed to be used as a **FlutterFlow Custom Widget**.
 
 ---
 
-## How to use in FlutterFlow — step by step
-
-### Step 1 — Push the package to GitHub
-
-FlutterFlow cannot read files from your local machine, so the package must be on a git host.
-
-1. Create a new repository on GitHub, e.g. `bambi_signature_pad_widget`
-2. Open a terminal inside `D:/testing-ct/bambi_signature_pad_widget/` and run:
-
-```bash
-git init
-git add .
-git commit -m "initial commit"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/bambi_signature_pad_widget.git
-git push -u origin main
-```
-
-3. Note the repository URL — you will need it in the next step.
-
----
-
-### Step 2 — Add the package as a dependency in FlutterFlow
+### Step 1 — Add the package as a dependency in FlutterFlow
 
 1. Open your FlutterFlow project.
 2. Click the **Settings** icon (gear ⚙️) in the left sidebar.
@@ -78,7 +56,7 @@ git push -u origin main
 
 ---
 
-### Step 3 — Add an App State variable for the save result
+### Step 2 — Add an App State variable for the save result
 
 The widget returns `true` or `false` after saving. The cleanest way to read this in FlutterFlow is via an App State variable.
 
@@ -92,7 +70,7 @@ The widget returns `true` or `false` after saving. The cleanest way to read this
 
 ---
 
-### Step 4 — Create the Custom Widget
+### Step 3 — Create the Custom Widget
 
 1. Go to **Custom Code** in the left sidebar.
 2. Click **+ Add** → **Widget**.
@@ -162,7 +140,7 @@ class _BambiSignaturePadState extends State<BambiSignaturePad> {
 
 ---
 
-### Step 5 — Define the widget parameters in FlutterFlow
+### Step 4 — Define the widget parameters in FlutterFlow
 
 Still on the Custom Widget editor, scroll to the **Parameters** panel and add:
 
@@ -183,7 +161,7 @@ Click **Save Widget**.
 
 ---
 
-### Step 6 — Place the widget on a page
+### Step 5 — Place the widget on a page
 
 1. Open the page where you want to show the PDF signer.
 2. In the widget tree, click **+** and search for `BambiSignaturePad`.
@@ -199,7 +177,7 @@ Click **Save Widget**.
 
 ---
 
-### Step 7 — Handle the save result with an action
+### Step 6 — Handle the save result with an action
 
 1. In **Properties → Actions**, click **+ Add Action** next to `onSaveComplete`.
 2. Add a **Conditional Action**:
