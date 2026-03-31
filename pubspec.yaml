@@ -1,0 +1,30 @@
+name: bambi_signature_pad_widget
+description: >-
+  A Flutter widget for viewing and signing PDF documents from a URL.
+  Supports custom branding, drag-to-place signature boxes, and saves
+  the signed PDF to device. Designed for FlutterFlow custom widgets.
+version: 0.1.0
+
+repository: https://github.com/YOUR_USERNAME/bambi_signature_pad_widget
+homepage: https://github.com/YOUR_USERNAME/bambi_signature_pad_widget
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+  flutter: ">=3.10.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  syncfusion_flutter_pdfviewer: ^32.2.5
+  syncfusion_flutter_pdf: ^32.2.5
+  path_provider: ^2.1.5
+  uuid: ^4.3.3
+  http: ^1.2.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
